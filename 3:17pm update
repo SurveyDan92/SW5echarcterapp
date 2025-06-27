@@ -1,0 +1,1269 @@
+
+import React, { useState, useRef } from 'react';
+import { Download, Upload, Save, Plus, Minus, Dice6 } from 'lucide-react';
+
+const SW5eCharacterCreator = () => {
+  const fileInputRef = useRef(null);
+  
+  const [character, setCharacter] = useState({
+    // Basic Info
+    name: '',
+    species: '',
+    class: '',
+    background: '',
+    level: 1,
+    
+    // Ability Scores
+    abilities: {
+      strength: 10,
+      dexterity: 10,
+      constitution: 10,
+      intelligence: 10,
+      wisdom: 10,
+      charisma: 10
+    },
+    
+    // Combat Stats
+    hitPoints: 0,
+    maxHitPoints: 0,
+    tempHitPoints: 0,
+    armorClass: 10,
+    proficiencyBonus: 2,
+    speed: 30,
+    
+    // Applied Bonuses (from species/class)
+    appliedAbilityBonuses: {},
+    availableSkillChoices: [],
+    selectedClassSkills: [],
+    
+    // Skills & Proficiencies
+    skillProficiencies: {},
+    skillExpertise: {},
+    savingThrowProficiencies: {},
+    languages: [],
+    toolProficiencies: [],
+    weaponProficiencies: [],
+    armorProficiencies: [],
+    
+    // Force & Tech
+    forcePowerLevel: 0,
+    forcePoints: 0,
+    techPowerLevel: 0,
+    techPoints: 0,
+    
+    // Equipment
+    credits: 0,
+    equipment: [],
+    weapons: [],
+    armor: null,
+    
+    // Story Elements
+    personality: '',
+    ideals: '',
+    bonds: '',
+    flaws: '',
+    backstory: '',
+    
+    // Campaign Preferences
+    preferredEra: '',
+    preferredTone: '',
+    preferredComplexity: 'standard'
+  });
+
+  // SW5e Species with mechanical data
+  const speciesData = {
+    'Human': {
+      abilityIncrease: { any: 1, choice: 1 }, // +1 to any ability, +1 to another
+      size: 'Medium',
+      speed: 30,
+      languages: ['Galactic Basic'],
+      features: ['Extra Language', 'Extra Skill'],
+      darkvision: 0
+    },
+    'Chiss': {
+      abilityIncrease: { intelligence: 2, wisdom: 1 },
+      size: 'Medium', 
+      speed: 30,
+      languages: ['Galactic Basic', 'Cheunh'],
+      features: ['Darkvision', 'Chiss Tactics'],
+      darkvision: 60
+    },
+    'Twi\'lek': {
+      abilityIncrease: { charisma: 2, dexterity: 1 },
+      size: 'Medium',
+      speed: 30, 
+      languages: ['Galactic Basic', 'Twi\'leki'],
+      features: ['Darkvision', 'Natural Dancers'],
+      darkvision: 60
+    },
+    'Wookiee': {
+      abilityIncrease: { strength: 2, constitution: 1 },
+      size: 'Medium',
+      speed: 30,
+      languages: ['Shyriiwook'],
+      features: ['Darkvision', 'Powerful Build', 'Treeclimber'],
+      darkvision: 60
+    },
+    'Rodian': {
+      abilityIncrease: { dexterity: 2, constitution: 1 },
+      size: 'Medium',
+      speed: 30,
+      languages: ['Galactic Basic', 'Rodese'],
+      features: ['Darkvision', 'Keen Hearing and Smell'],
+      darkvision: 60
+    },
+    'Zabrak': {
+      abilityIncrease: { constitution: 2, charisma: 1 },
+      size: 'Medium',
+      speed: 30,
+      languages: ['Galactic Basic', 'Zabraki'],
+      features: ['Darkvision', 'Aggressive'],
+      darkvision: 60
+    },
+    'Togruta': {
+      abilityIncrease: { wisdom: 2, charisma: 1 },
+      size: 'Medium',
+      speed: 30,
+      languages: ['Galactic Basic', 'Togruti'],
+      features: ['Darkvision', 'Natural Tracker'],
+      darkvision: 60
+    },
+    'Nautolan': {
+      abilityIncrease: { wisdom: 2, dexterity: 1 },
+      size: 'Medium',
+      speed: 30,
+      languages: ['Galactic Basic', 'Nautila'],
+      features: ['Darkvision', 'Amphibious', 'Pheromone Sense'],
+      darkvision: 60
+    },
+    'Miraluka': {
+      abilityIncrease: { wisdom: 2, charisma: 1 },
+      size: 'Medium',
+      speed: 30,
+      languages: ['Galactic Basic', 'Miralukese'],
+      features: ['Force Sight', 'Force Sensitive'],
+      darkvision: 0
+    },
+    'Jawa': {
+      abilityIncrease: { dexterity: 2, intelligence: 1 },
+      size: 'Small',
+      speed: 25,
+      languages: ['Jawaese'],
+      features: ['Darkvision', 'Tech Savvy', 'Tinker'],
+      darkvision: 60
+    },
+    'Ewok': {
+      abilityIncrease: { dexterity: 2, wisdom: 1 },
+      size: 'Small',
+      speed: 25,
+      languages: ['Ewokese'],
+      features: ['Darkvision', 'Brave', 'Treeclimber'],
+      darkvision: 60
+    },
+    'Droid': {
+      abilityIncrease: { constitution: 2, intelligence: 1 },
+      size: 'Medium',
+      speed: 30,
+      languages: ['Galactic Basic', 'Binary'],
+      features: ['Constructed', 'Maintenance Mode', 'Integrated Protection'],
+      darkvision: 60
+    },
+    'Cathar': {
+      abilityIncrease: { dexterity: 2, charisma: 1 },
+      size: 'Medium',
+      speed: 35,
+      languages: ['Galactic Basic', 'Catharese'],
+      features: ['Darkvision', 'Feline Agility', 'Cat\'s Claws'],
+      darkvision: 60
+    },
+    'Cerean': {
+      abilityIncrease: { intelligence: 2, wisdom: 1 },
+      size: 'Medium',
+      speed: 30,
+      languages: ['Galactic Basic', 'Cerean'],
+      features: ['Darkvision', 'Binary Processing', 'Telepathic'],
+      darkvision: 60
+    }
+  };
+
+  // SW5e Classes with mechanical data
+  const classData = {
+    'Berserker': {
+      hitDie: 12,
+      primaryAbility: ['Strength'],
+      savingThrows: ['Strength', 'Constitution'],
+      skillChoices: ['Animal Handling', 'Athletics', 'Intimidation', 'Nature', 'Perception', 'Survival'],
+      skillCount: 2,
+      armorProficiencies: ['Light armor', 'Medium armor', 'Shields'],
+      weaponProficiencies: ['Simple weapons', 'Martial weapons'],
+      toolProficiencies: [],
+      startingCredits: 2000
+    },
+    'Consular': {
+      hitDie: 6,
+      primaryAbility: ['Wisdom', 'Charisma'],
+      savingThrows: ['Wisdom', 'Charisma'],
+      skillChoices: ['Deception', 'History', 'Insight', 'Investigation', 'Lore', 'Medicine', 'Persuasion', 'Religion'],
+      skillCount: 2,
+      armorProficiencies: ['Light armor'],
+      weaponProficiencies: ['Simple lightweapons', 'Simple vibroweapons'],
+      toolProficiencies: [],
+      startingCredits: 1000
+    },
+    'Engineer': {
+      hitDie: 8,
+      primaryAbility: ['Intelligence'],
+      savingThrows: ['Constitution', 'Intelligence'],
+      skillChoices: ['Investigation', 'Lore', 'Medicine', 'Nature', 'Piloting', 'Technology'],
+      skillCount: 3,
+      armorProficiencies: ['Light armor', 'Medium armor'],
+      weaponProficiencies: ['Simple blasters', 'Simple vibroweapons'],
+      toolProficiencies: ['Tinker\'s implements'],
+      startingCredits: 1500
+    },
+    'Fighter': {
+      hitDie: 10,
+      primaryAbility: ['Strength', 'Dexterity'],
+      savingThrows: ['Strength', 'Constitution'],
+      skillChoices: ['Acrobatics', 'Animal Handling', 'Athletics', 'History', 'Insight', 'Intimidation', 'Perception', 'Survival'],
+      skillCount: 2,
+      armorProficiencies: ['Light armor', 'Medium armor', 'Heavy armor', 'Shields'],
+      weaponProficiencies: ['Simple weapons', 'Martial weapons'],
+      toolProficiencies: [],
+      startingCredits: 5000
+    },
+    'Guardian': {
+      hitDie: 10,
+      primaryAbility: ['Strength', 'Constitution'],
+      savingThrows: ['Wisdom', 'Charisma'],
+      skillChoices: ['Athletics', 'Insight', 'Intimidation', 'Medicine', 'Perception', 'Persuasion'],
+      skillCount: 2,
+      armorProficiencies: ['Light armor', 'Medium armor', 'Heavy armor', 'Shields'],
+      weaponProficiencies: ['Simple lightweapons', 'Martial lightweapons', 'Simple vibroweapons', 'Martial vibroweapons'],
+      toolProficiencies: [],
+      startingCredits: 1000
+    },
+    'Monk': {
+      hitDie: 8,
+      primaryAbility: ['Dexterity', 'Wisdom'],
+      savingThrows: ['Strength', 'Dexterity'],
+      skillChoices: ['Acrobatics', 'Athletics', 'History', 'Insight', 'Lore', 'Stealth'],
+      skillCount: 2,
+      armorProficiencies: [],
+      weaponProficiencies: ['Simple weapons', 'Martial weapons'],
+      toolProficiencies: ['One artisan\'s implements or musical instrument'],
+      startingCredits: 500
+    },
+    'Operative': {
+      hitDie: 8,
+      primaryAbility: ['Dexterity'],
+      savingThrows: ['Dexterity', 'Intelligence'],
+      skillChoices: ['Acrobatics', 'Athletics', 'Deception', 'Insight', 'Intimidation', 'Investigation', 'Perception', 'Performance', 'Persuasion', 'Piloting', 'Sleight of Hand', 'Stealth', 'Technology'],
+      skillCount: 4,
+      armorProficiencies: ['Light armor'],
+      weaponProficiencies: ['Simple blasters', 'Simple vibroweapons', 'Martial blasters', 'Martial vibroweapons'],
+      toolProficiencies: ['Security kit', 'Slicer\'s kit'],
+      startingCredits: 4000
+    },
+    'Scholar': {
+      hitDie: 6,
+      primaryAbility: ['Intelligence'],
+      savingThrows: ['Intelligence', 'Wisdom'],
+      skillChoices: ['History', 'Insight', 'Investigation', 'Lore', 'Medicine', 'Nature', 'Persuasion', 'Technology'],
+      skillCount: 3,
+      armorProficiencies: ['Light armor'],
+      weaponProficiencies: ['Simple blasters', 'Simple vibroweapons'],
+      toolProficiencies: ['One specialist\'s kit'],
+      startingCredits: 2000
+    },
+    'Scout': {
+      hitDie: 10,
+      primaryAbility: ['Dexterity', 'Wisdom'],
+      savingThrows: ['Strength', 'Dexterity'],
+      skillChoices: ['Animal Handling', 'Athletics', 'Insight', 'Investigation', 'Nature', 'Perception', 'Piloting', 'Survival', 'Technology'],
+      skillCount: 3,
+      armorProficiencies: ['Light armor', 'Medium armor', 'Shields'],
+      weaponProficiencies: ['Simple weapons', 'Martial weapons'],
+      toolProficiencies: [],
+      startingCredits: 2000
+    },
+    'Sentinel': {
+      hitDie: 8,
+      primaryAbility: ['Dexterity', 'Wisdom'],
+      savingThrows: ['Dexterity', 'Wisdom'],
+      skillChoices: ['Acrobatics', 'Animal Handling', 'Insight', 'Intimidation', 'Perception', 'Piloting', 'Stealth', 'Survival'],
+      skillCount: 2,
+      armorProficiencies: ['Light armor', 'Medium armor'],
+      weaponProficiencies: ['Simple lightweapons', 'Martial lightweapons', 'Simple vibroweapons', 'Martial vibroweapons'],
+      toolProficiencies: [],
+      startingCredits: 1000
+    }
+  };
+
+  // SW5e Backgrounds
+  const backgrounds = [
+    'Agent', 'Bounty Hunter', 'Entertainer', 'Gambler', 'Hermit', 'Jedi',
+    'Mercenary', 'Noble', 'Pilot', 'Scavenger', 'Scientist', 'Sith', 'Smuggler'
+  ];
+
+  // SW5e Skills with associated abilities
+  const skillsData = {
+    'Acrobatics': 'dexterity',
+    'Animal Handling': 'wisdom',
+    'Athletics': 'strength',
+    'Deception': 'charisma',
+    'History': 'intelligence',
+    'Insight': 'wisdom',
+    'Intimidation': 'charisma',
+    'Investigation': 'intelligence',
+    'Lore': 'intelligence',
+    'Medicine': 'wisdom',
+    'Nature': 'intelligence',
+    'Perception': 'wisdom',
+    'Performance': 'charisma',
+    'Persuasion': 'charisma',
+    'Piloting': 'intelligence',
+    'Sleight of Hand': 'dexterity',
+    'Stealth': 'dexterity',
+    'Survival': 'wisdom',
+    'Technology': 'intelligence'
+  };
+
+  // Saving throws
+  const savingThrowData = {
+    'Strength': 'strength',
+    'Dexterity': 'dexterity',
+    'Constitution': 'constitution',
+    'Intelligence': 'intelligence',
+    'Wisdom': 'wisdom',
+    'Charisma': 'charisma'
+  };
+
+  const eras = ['Clone Wars', 'Galactic Civil War', 'High Republic', 'Post-Sequel Trilogy', 'Old Republic'];
+  const tones = ['Heroic Rebellion', 'Gritty Underworld', 'Political Intrigue', 'Exploration & Discovery', 'Jedi/Sith Drama'];
+
+  const getAbilityModifier = (score) => Math.floor((score - 10) / 2);
+
+  const calculateSkillBonus = (skill) => {
+    const ability = skillsData[skill];
+    const abilityMod = getAbilityModifier(character.abilities[ability]);
+    const proficient = character.skillProficiencies[skill];
+    const expertise = character.skillExpertise[skill];
+    
+    let bonus = abilityMod;
+    if (proficient) {
+      bonus += character.proficiencyBonus;
+    }
+    if (expertise) {
+      bonus += character.proficiencyBonus; // Double proficiency
+    }
+    
+    return bonus;
+  };
+
+  const calculateSavingThrowBonus = (save) => {
+    const ability = savingThrowData[save];
+    const abilityMod = getAbilityModifier(character.abilities[ability]);
+    const proficient = character.savingThrowProficiencies[save];
+    
+    return abilityMod + (proficient ? character.proficiencyBonus : 0);
+  };
+
+  const toggleSkillProficiency = (skill) => {
+    setCharacter(prev => ({
+      ...prev,
+      skillProficiencies: {
+        ...prev.skillProficiencies,
+        [skill]: !prev.skillProficiencies[skill]
+      }
+    }));
+  };
+
+  const toggleSkillExpertise = (skill) => {
+    setCharacter(prev => ({
+      ...prev,
+      skillExpertise: {
+        ...prev.skillExpertise,
+        [skill]: !prev.skillExpertise[skill]
+      }
+    }));
+  };
+
+  // Calculate proficiency bonus based on level
+  const calculateProficiencyBonus = (level) => {
+    return Math.ceil(level / 4) + 1;
+  };
+
+  // Calculate max hit points
+  const calculateMaxHitPoints = () => {
+    if (!character.class || character.level < 1) return 0;
+    
+    const classInfo = classData[character.class];
+    if (!classInfo) return 0;
+    
+    const conMod = getAbilityModifier(character.abilities.constitution);
+    const baseHP = classInfo.hitDie + conMod; // First level
+    const additionalHP = (character.level - 1) * (Math.floor(classInfo.hitDie / 2) + 1 + conMod); // Average for additional levels
+    
+    return Math.max(1, baseHP + additionalHP);
+  };
+
+  // Apply species bonuses
+  const applySpeciesBonuses = (speciesName) => {
+    if (!speciesName || !speciesData[speciesName]) return;
+    
+    const species = speciesData[speciesName];
+    let newAbilities = { ...character.abilities };
+    let newLanguages = [...character.languages];
+    
+    // Apply ability score increases
+    Object.entries(species.abilityIncrease).forEach(([ability, bonus]) => {
+      if (ability !== 'any' && ability !== 'choice') {
+        newAbilities[ability] = Math.min(20, newAbilities[ability] + bonus);
+      }
+    });
+    
+    // Add species languages (avoid duplicates)
+    species.languages.forEach(lang => {
+      if (!newLanguages.includes(lang)) {
+        newLanguages.push(lang);
+      }
+    });
+    
+    setCharacter(prev => ({
+      ...prev,
+      abilities: newAbilities,
+      languages: newLanguages,
+      speed: species.speed,
+      appliedAbilityBonuses: species.abilityIncrease
+    }));
+  };
+
+  // Apply class bonuses
+  const applyClassBonuses = (className, level) => {
+    if (!className || !classData[className]) return;
+    
+    const classInfo = classData[className];
+    const profBonus = calculateProficiencyBonus(level);
+    const maxHP = calculateMaxHitPoints();
+    
+    // Set up saving throw proficiencies
+    let newSavingThrows = {};
+    classInfo.savingThrows.forEach(save => {
+      newSavingThrows[save] = true;
+    });
+    
+    // Set up available skill choices
+    setCharacter(prev => ({
+      ...prev,
+      proficiencyBonus: profBonus,
+      maxHitPoints: maxHP,
+      hitPoints: prev.hitPoints || maxHP, // Set current HP to max if not set
+      credits: prev.credits || classInfo.startingCredits,
+      savingThrowProficiencies: newSavingThrows,
+      availableSkillChoices: classInfo.skillChoices,
+      weaponProficiencies: classInfo.weaponProficiencies,
+      armorProficiencies: classInfo.armorProficiencies,
+      toolProficiencies: [...prev.toolProficiencies, ...classInfo.toolProficiencies]
+    }));
+  };
+
+  const handleSpeciesChange = (newSpecies) => {
+    // Reset abilities to base if changing species
+    if (character.species && character.species !== newSpecies) {
+      const resetAbilities = { ...character.abilities };
+      
+      // Remove old species bonuses
+      if (character.appliedAbilityBonuses) {
+        Object.entries(character.appliedAbilityBonuses).forEach(([ability, bonus]) => {
+          if (ability !== 'any' && ability !== 'choice' && resetAbilities[ability]) {
+            resetAbilities[ability] = Math.max(1, resetAbilities[ability] - bonus);
+          }
+        });
+      }
+      
+      setCharacter(prev => ({
+        ...prev,
+        species: newSpecies,
+        abilities: resetAbilities,
+        languages: [], // Reset languages
+        appliedAbilityBonuses: {}
+      }));
+    } else {
+      setCharacter(prev => ({ ...prev, species: newSpecies }));
+    }
+    
+    // Apply new species bonuses
+    setTimeout(() => applySpeciesBonuses(newSpecies), 100);
+  };
+
+  const handleClassChange = (newClass) => {
+    setCharacter(prev => ({
+      ...prev,
+      class: newClass,
+      selectedClassSkills: [], // Reset skill selections when changing class
+      skillProficiencies: {}, // Reset skill proficiencies
+      savingThrowProficiencies: {} // Reset saving throws
+    }));
+    
+    // Apply new class bonuses
+    setTimeout(() => applyClassBonuses(newClass, character.level), 100);
+  };
+
+  const handleLevelChange = (newLevel) => {
+    setCharacter(prev => ({ ...prev, level: newLevel }));
+    
+    if (character.class) {
+      setTimeout(() => applyClassBonuses(character.class, newLevel), 100);
+    }
+  };
+
+  const toggleClassSkill = (skill) => {
+    const isSelected = character.selectedClassSkills.includes(skill);
+    const classInfo = classData[character.class];
+    
+    if (!classInfo) return;
+    
+    if (isSelected) {
+      // Remove skill
+      setCharacter(prev => ({
+        ...prev,
+        selectedClassSkills: prev.selectedClassSkills.filter(s => s !== skill),
+        skillProficiencies: {
+          ...prev.skillProficiencies,
+          [skill]: false
+        }
+      }));
+    } else {
+      // Add skill if under limit
+      if (character.selectedClassSkills.length < classInfo.skillCount) {
+        setCharacter(prev => ({
+          ...prev,
+          selectedClassSkills: [...prev.selectedClassSkills, skill],
+          skillProficiencies: {
+            ...prev.skillProficiencies,
+            [skill]: true
+          }
+        }));
+      }
+    }
+  };
+
+  const rollAbilityScore = () => {
+    const rolls = Array.from({length: 4}, () => Math.floor(Math.random() * 6) + 1);
+    rolls.sort((a, b) => b - a);
+    return rolls.slice(0, 3).reduce((sum, roll) => sum + roll, 0);
+  };
+
+  const rollAllAbilities = () => {
+    setCharacter(prev => ({
+      ...prev,
+      abilities: {
+        strength: rollAbilityScore(),
+        dexterity: rollAbilityScore(),
+        constitution: rollAbilityScore(),
+        intelligence: rollAbilityScore(),
+        wisdom: rollAbilityScore(),
+        charisma: rollAbilityScore()
+      }
+    }));
+  };
+
+  const updateAbility = (ability, value) => {
+    setCharacter(prev => ({
+      ...prev,
+      abilities: {
+        ...prev.abilities,
+        [ability]: Math.max(1, Math.min(20, value))
+      }
+    }));
+  };
+
+  const exportCharacter = () => {
+    const dataStr = JSON.stringify(character, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${character.name || 'character'}_sw5e.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importCharacter = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedCharacter = JSON.parse(e.target.result);
+          setCharacter(importedCharacter);
+        } catch (error) {
+          alert('Error importing character file. Please check the file format.');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const exportToFoundryVTT = () => {
+    const foundryData = {
+      name: character.name,
+      type: "character",
+      system: "sw5e",
+      data: {
+        abilities: character.abilities,
+        details: {
+          species: character.species,
+          class: character.class,
+          background: character.background,
+          level: character.level
+        },
+        attributes: {
+          hp: { value: character.hitPoints, max: character.hitPoints },
+          ac: { value: character.armorClass }
+        }
+      }
+    };
+    
+    const dataStr = JSON.stringify(foundryData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${character.name || 'character'}_foundry.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto p-6 bg-gray-900 text-white min-h-screen">
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-center mb-2 text-blue-400">SW5e Character Creator</h1>
+        <p className="text-center text-gray-300">Create characters for AI-powered Star Wars adventures</p>
+      </div>
+
+      {/* Import/Export Controls */}
+      <div className="mb-6 flex gap-4 justify-center flex-wrap">
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 rounded transition-colors"
+        >
+          <Upload size={16} />
+          Import Character
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          onChange={importCharacter}
+          className="hidden"
+        />
+        <button
+          onClick={exportCharacter}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded transition-colors"
+        >
+          <Download size={16} />
+          Export SW5e JSON
+        </button>
+        <button
+          onClick={exportToFoundryVTT}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded transition-colors"
+        >
+          <Save size={16} />
+          Export to Foundry VTT
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Basic Information */}
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h2 className="text-2xl font-semibold mb-4 text-blue-300">Basic Information</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Character Name</label>
+              <input
+                type="text"
+                value={character.name}
+                onChange={(e) => setCharacter(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+                placeholder="Enter character name"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Level</label>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={character.level}
+                onChange={(e) => handleLevelChange(parseInt(e.target.value) || 1)}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              />
+              <div className="mt-1 text-xs text-gray-400">
+                Proficiency Bonus: +{character.proficiencyBonus}
+              </div>
+            </div>}
+                onChange={(e) => setCharacter(prev => ({ ...prev, level: parseInt(e.target.value) || 1 }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Species</label>
+              <select
+                value={character.species}
+                onChange={(e) => handleSpeciesChange(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              >
+                <option value="">Select Species</option>
+                {Object.keys(speciesData).map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              {character.species && speciesData[character.species] && (
+                <div className="mt-2 text-xs text-gray-400">
+                  <div>Size: {speciesData[character.species].size} | Speed: {speciesData[character.species].speed} ft</div>
+                  <div>Languages: {speciesData[character.species].languages.join(', ')}</div>
+                  <div>Features: {speciesData[character.species].features.join(', ')}</div>
+                </div>
+              )}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Class</label>
+              <select
+                value={character.class}
+                onChange={(e) => handleClassChange(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              >
+                <option value="">Select Class</option>
+                {Object.keys(classData).map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              {character.class && classData[character.class] && (
+                <div className="mt-2 text-xs text-gray-400">
+                  <div>Hit Die: d{classData[character.class].hitDie} | Skills: {classData[character.class].skillCount} choices</div>
+                  <div>Saves: {classData[character.class].savingThrows.join(', ')}</div>
+                  <div>Starting Credits: {classData[character.class].startingCredits}</div>
+                </div>
+              )}
+            </div>
+            
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Background</label>
+              <select
+                value={character.background}
+                onChange={(e) => setCharacter(prev => ({ ...prev, background: e.target.value }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              >
+                <option value="">Select Background</option>
+                {backgrounds.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
+          {/* Proficiencies Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h4 className="text-md font-semibold mb-2 text-yellow-300">Weapon Proficiencies</h4>
+              <div className="bg-gray-700 rounded p-3 text-sm">
+                {character.weaponProficiencies.length > 0 ? (
+                  <ul className="list-disc list-inside space-y-1">
+                    {character.weaponProficiencies.map((prof, index) => (
+                      <li key={index}>{prof}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span className="text-gray-400">None (select a class)</span>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-md font-semibold mb-2 text-yellow-300">Armor Proficiencies</h4>
+              <div className="bg-gray-700 rounded p-3 text-sm">
+                {character.armorProficiencies.length > 0 ? (
+                  <ul className="list-disc list-inside space-y-1">
+                    {character.armorProficiencies.map((prof, index) => (
+                      <li key={index}>{prof}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span className="text-gray-400">None (select a class)</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Ability Scores */}
+        <div className="bg-gray-800 rounded-lg p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-blue-300">Ability Scores</h2>
+            <button
+              onClick={rollAllAbilities}
+              className="flex items-center gap-2 px-3 py-1 bg-red-600 hover:bg-red-500 rounded transition-colors text-sm"
+            >
+              <Dice6 size={14} />
+              Roll All
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            {Object.entries(character.abilities).map(([ability, score]) => (
+              <div key={ability} className="bg-gray-700 rounded p-3">
+                <div className="text-center">
+                  <div className="text-sm font-medium capitalize text-gray-300">{ability}</div>
+                  <div className="flex items-center justify-center gap-2 mt-1">
+                    <button
+                      onClick={() => updateAbility(ability, score - 1)}
+                      className="w-6 h-6 bg-red-600 hover:bg-red-500 rounded flex items-center justify-center"
+                    >
+                      <Minus size={12} />
+                    </button>
+                    <span className="text-2xl font-bold w-8 text-center">{score}</span>
+                    <button
+                      onClick={() => updateAbility(ability, score + 1)}
+                      className="w-6 h-6 bg-green-600 hover:bg-green-500 rounded flex items-center justify-center"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    Modifier: {getAbilityModifier(score) >= 0 ? '+' : ''}{getAbilityModifier(score)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Combat Stats */}
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h2 className="text-2xl font-semibold mb-4 text-blue-300">Combat Statistics</h2>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Hit Points</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max={character.maxHitPoints}
+                  value={character.hitPoints}
+                  onChange={(e) => setCharacter(prev => ({ ...prev, hitPoints: parseInt(e.target.value) || 0 }))}
+                  className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+                  placeholder="Current"
+                />
+                <span className="flex items-center text-gray-400">/ {character.maxHitPoints}</span>
+              </div>
+              <div className="mt-1 text-xs text-gray-400">
+                Max HP calculated from class + CON modifier
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Armor Class</label>
+              <input
+                type="number"
+                min="1"
+                value={character.armorClass}
+                onChange={(e) => setCharacter(prev => ({ ...prev, armorClass: parseInt(e.target.value) || 10 }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Speed</label>
+              <input
+                type="number"
+                min="0"
+                value={character.speed}
+                onChange={(e) => setCharacter(prev => ({ ...prev, speed: parseInt(e.target.value) || 30 }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Proficiency Bonus</label>
+              <input
+                type="number"
+                min="1"
+                value={character.proficiencyBonus}
+                onChange={(e) => setCharacter(prev => ({ ...prev, proficiencyBonus: parseInt(e.target.value) || 2 }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Skills & Proficiencies */}
+        <div className="bg-gray-800 rounded-lg p-6 lg:col-span-2">
+          <h2 className="text-2xl font-semibold mb-4 text-blue-300">Skills & Proficiencies</h2>
+          
+          {/* Class Skill Selection */}
+          {character.class && character.availableSkillChoices.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-3 text-green-300">
+                Class Skills ({character.selectedClassSkills.length}/{classData[character.class]?.skillCount || 0})
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {character.availableSkillChoices.map(skill => {
+                  const isSelected = character.selectedClassSkills.includes(skill);
+                  const canSelect = character.selectedClassSkills.length < (classData[character.class]?.skillCount || 0);
+                  
+                  return (
+                    <button
+                      key={skill}
+                      onClick={() => toggleClassSkill(skill)}
+                      disabled={!isSelected && !canSelect}
+                      className={`p-2 rounded text-sm transition-colors ${
+                        isSelected
+                          ? 'bg-blue-600 text-white'
+                          : canSelect
+                          ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                          : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      {skill}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-2 text-xs text-gray-400">
+                Select {classData[character.class]?.skillCount || 0} skills from your class list
+              </div>
+            </div>
+          )}
+
+          {/* Skills */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3 text-green-300">Skills</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              {Object.entries(skillsData).map(([skill, ability]) => {
+                const bonus = calculateSkillBonus(skill);
+                const isProficient = character.skillProficiencies[skill];
+                const hasExpertise = character.skillExpertise[skill];
+                
+                return (
+                  <div key={skill} className="flex items-center justify-between bg-gray-700 rounded p-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => toggleSkillProficiency(skill)}
+                          className={`w-4 h-4 rounded border ${
+                            isProficient ? 'bg-blue-500 border-blue-500' : 'border-gray-400'
+                          }`}
+                          title="Proficiency"
+                        >
+                          {isProficient && <span className="text-xs text-white">•</span>}
+                        </button>
+                        <button
+                          onClick={() => toggleSkillExpertise(skill)}
+                          className={`w-4 h-4 rounded border ${
+                            hasExpertise ? 'bg-yellow-500 border-yellow-500' : 'border-gray-400'
+                          }`}
+                          title="Expertise"
+                        >
+                          {hasExpertise && <span className="text-xs text-white">★</span>}
+                        </button>
+                      </div>
+                      <span className="text-sm font-medium">{skill}</span>
+                      <span className="text-xs text-gray-400 capitalize">({ability.substring(0, 3)})</span>
+                    </div>
+                    <div className="text-sm font-mono">
+                      {bonus >= 0 ? '+' : ''}{bonus}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-2 text-xs text-gray-400">
+              • = Proficient | ★ = Expertise (double proficiency)
+            </div>
+          </div>
+
+          {/* Saving Throws */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3 text-green-300">Saving Throws</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {Object.keys(savingThrowData).map(save => {
+                const bonus = calculateSavingThrowBonus(save);
+                const isProficient = character.savingThrowProficiencies[save];
+                
+                return (
+                  <div key={save} className="flex items-center justify-between bg-gray-700 rounded p-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleSavingThrowProficiency(save)}
+                        className={`w-4 h-4 rounded border ${
+                          isProficient ? 'bg-blue-500 border-blue-500' : 'border-gray-400'
+                        }`}
+                        title="Proficiency"
+                      >
+                        {isProficient && <span className="text-xs text-white">•</span>}
+                      </button>
+                      <span className="text-sm font-medium">{save}</span>
+                    </div>
+                    <div className="text-sm font-mono">
+                      {bonus >= 0 ? '+' : ''}{bonus}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Other Proficiencies */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h4 className="text-md font-semibold mb-2 text-yellow-300">Languages</h4>
+              <div className="space-y-2">
+                {character.languages.map((lang, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={lang}
+                      onChange={(e) => {
+                        const newLanguages = [...character.languages];
+                        newLanguages[index] = e.target.value;
+                        setCharacter(prev => ({ ...prev, languages: newLanguages }));
+                      }}
+                      className="flex-1 px-2 py-1 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none text-sm"
+                      placeholder="Language name"
+                    />
+                    <button
+                      onClick={() => {
+                        const newLanguages = character.languages.filter((_, i) => i !== index);
+                        setCharacter(prev => ({ ...prev, languages: newLanguages }));
+                      }}
+                      className="text-red-400 hover:text-red-300"
+                    >
+                      <Minus size={16} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setCharacter(prev => ({ ...prev, languages: [...prev.languages, ''] }))}
+                  className="flex items-center gap-1 text-green-400 hover:text-green-300 text-sm"
+                >
+                  <Plus size={16} />
+                  Add Language
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-md font-semibold mb-2 text-yellow-300">Tool Proficiencies</h4>
+              <div className="space-y-2">
+                {character.toolProficiencies.map((tool, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={tool}
+                      onChange={(e) => {
+                        const newTools = [...character.toolProficiencies];
+                        newTools[index] = e.target.value;
+                        setCharacter(prev => ({ ...prev, toolProficiencies: newTools }));
+                      }}
+                      className="flex-1 px-2 py-1 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none text-sm"
+                      placeholder="Tool or kit name"
+                    />
+                    <button
+                      onClick={() => {
+                        const newTools = character.toolProficiencies.filter((_, i) => i !== index);
+                        setCharacter(prev => ({ ...prev, toolProficiencies: newTools }));
+                      }}
+                      className="text-red-400 hover:text-red-300"
+                    >
+                      <Minus size={16} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setCharacter(prev => ({ ...prev, toolProficiencies: [...prev.toolProficiencies, ''] }))}
+                  className="flex items-center gap-1 text-green-400 hover:text-green-300 text-sm"
+                >
+                  <Plus size={16} />
+                  Add Tool
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h2 className="text-2xl font-semibold mb-4 text-blue-300">Force & Tech Powers</h2>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Force Power Level</label>
+              <input
+                type="number"
+                min="0"
+                max="9"
+                value={character.forcePowerLevel}
+                onChange={(e) => setCharacter(prev => ({ ...prev, forcePowerLevel: parseInt(e.target.value) || 0 }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Force Points</label>
+              <input
+                type="number"
+                min="0"
+                value={character.forcePoints}
+                onChange={(e) => setCharacter(prev => ({ ...prev, forcePoints: parseInt(e.target.value) || 0 }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Tech Power Level</label>
+              <input
+                type="number"
+                min="0"
+                max="9"
+                value={character.techPowerLevel}
+                onChange={(e) => setCharacter(prev => ({ ...prev, techPowerLevel: parseInt(e.target.value) || 0 }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Tech Points</label>
+              <input
+                type="number"
+                min="0"
+                value={character.techPoints}
+                onChange={(e) => setCharacter(prev => ({ ...prev, techPoints: parseInt(e.target.value) || 0 }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Force & Tech Powers */}
+        <div className="bg-gray-800 rounded-lg p-6 lg:col-span-2">
+          <h2 className="text-2xl font-semibold mb-4 text-blue-300">Character Story & Personality</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Personality Traits</label>
+              <textarea
+                value={character.personality}
+                onChange={(e) => setCharacter(prev => ({ ...prev, personality: e.target.value }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+                rows="2"
+                placeholder="What makes your character unique?"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Ideals</label>
+              <textarea
+                value={character.ideals}
+                onChange={(e) => setCharacter(prev => ({ ...prev, ideals: e.target.value }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+                rows="2"
+                placeholder="What principles drive your character?"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Bonds</label>
+              <textarea
+                value={character.bonds}
+                onChange={(e) => setCharacter(prev => ({ ...prev, bonds: e.target.value }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+                rows="2"
+                placeholder="What connects your character to the world?"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Flaws</label>
+              <textarea
+                value={character.flaws}
+                onChange={(e) => setCharacter(prev => ({ ...prev, flaws: e.target.value }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+                rows="2"
+                placeholder="What weaknesses does your character have?"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1">Backstory</label>
+            <textarea
+              value={character.backstory}
+              onChange={(e) => setCharacter(prev => ({ ...prev, backstory: e.target.value }))}
+              className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              rows="4"
+              placeholder="Tell your character's story..."
+            />
+          </div>
+        </div>
+
+        {/* AI Story Preferences */}
+        <div className="bg-gray-800 rounded-lg p-6 lg:col-span-2">
+          <h2 className="text-2xl font-semibold mb-4 text-blue-300">AI Story Preferences</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Preferred Era</label>
+              <select
+                value={character.preferredEra}
+                onChange={(e) => setCharacter(prev => ({ ...prev, preferredEra: e.target.value }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              >
+                <option value="">Any Era</option>
+                {eras.map(era => <option key={era} value={era}>{era}</option>)}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Preferred Story Tone</label>
+              <select
+                value={character.preferredTone}
+                onChange={(e) => setCharacter(prev => ({ ...prev, preferredTone: e.target.value }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              >
+                <option value="">Any Tone</option>
+                {tones.map(tone => <option key={tone} value={tone}>{tone}</option>)}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Complexity Level</label>
+              <select
+                value={character.preferredComplexity}
+                onChange={(e) => setCharacter(prev => ({ ...prev, preferredComplexity: e.target.value }))}
+                className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-400 focus:outline-none"
+              >
+                <option value="narrative">Narrative Focus</option>
+                <option value="standard">Standard Rules</option>
+                <option value="hardcore">Hardcore Mode</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Character Summary */}
+      {character.name && (
+        <div className="mt-8 bg-gray-800 rounded-lg p-6">
+          <h2 className="text-2xl font-semibold mb-4 text-blue-300">Character Summary</h2>
+          <div className="text-gray-300">
+            <p className="text-lg font-medium">{character.name}</p>
+            <p>Level {character.level} {character.species} {character.class}</p>
+            <p>Background: {character.background}</p>
+            {character.preferredEra && <p>Preferred Era: {character.preferredEra}</p>}
+            {character.preferredTone && <p>Story Preference: {character.preferredTone}</p>}
+            <p>Complexity: {character.preferredComplexity}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default SW5eCharacterCreator;
